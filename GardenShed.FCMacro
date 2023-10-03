@@ -9,7 +9,7 @@ height_front = 2200
 height_back = 2000
 door_width = 1500
 door_height = 2000
-beam_overlap = 10
+beam_overlap = 15
 foundation_height = 300
 support_angle = 70
 stud_max_distance = 1000
@@ -161,13 +161,21 @@ def make_rafters(chord_front, chord_back, roof_angle):
     rafter = makeCuboid('Rafter' + str(i), beam_thickness, rafter_length, rafter_height)
     offset = (i * rafter_space) + (i * beam_thickness)
     moveLeftFrontBottom(rafter, left(chord_front) + offset, front(chord_front) - roof_overhang, top(chord_front))
+
     rafters.append(rafter)
   return rafters
 
-def make_battens(rafters):
+def make_battens(rafters, roof_angle):
   batten_length = right(rafters[-1]) - left(rafters[0])
 
-  distance = rafters[0].Width.Value
+  b = rafter_height
+  alpha = roof_angle
+  beta = 90 - alpha
+  c = b / (math.sin(math.radians(beta)))
+  a = math.sqrt(math.pow(c, 2) - math.pow(b, 2))
+  back_cutaway = a
+
+  distance = rafters[0].Width.Value - back_cutaway
   batten_space_count = math.ceil(distance/batten_max_distance)
   batten_count = batten_space_count + 1
   batten_space = (distance - (batten_count * batten_thickness)) / batten_space_count
@@ -182,6 +190,7 @@ def make_battens(rafters):
 
 
 doc = init_doc()
+
 frame_group = doc.addObject("App::DocumentObjectGroup", "Frame")
 roof_group = doc.addObject("App::DocumentObjectGroup", "Roof")
 facade_group = doc.addObject("App::DocumentObjectGroup", "Facade")
@@ -268,7 +277,7 @@ frame_group.addObjects([support_front_left, support_front_right, support_back_le
 roof_angle = calculate_roof_angle(chord_front, chord_back)
 rafters = make_rafters(chord_front, chord_back, roof_angle)
 roof_group.addObjects(rafters)
-battens = make_battens(rafters)
+battens = make_battens(rafters, roof_angle)
 roof_group.addObjects(battens)
 
 Draft.rotate(roof_group.OutListRecursive, angle=roof_angle * -1, axis=FreeCAD.Vector(1, 0, 0), center=FreeCAD.Vector(0, front(chord_front), top(chord_front)))
