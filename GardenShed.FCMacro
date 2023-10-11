@@ -17,8 +17,11 @@ rafter_max_distance = 1000
 batten_max_distance = 500
 batten_height = 30
 batten_thickness = 50
-facade_board_thickness = 12.5
-facade_board_width = 96
+facade_board_thickness = 19
+facade_board_width = 121-8
+foundation_height = 750
+foundation_diameter = 153
+foundation_gap = 15
 document_name = 'GardenShed'
 
 def init_doc():
@@ -194,6 +197,7 @@ doc = init_doc()
 frame_group = doc.addObject("App::DocumentObjectGroup", "Frame")
 roof_group = doc.addObject("App::DocumentObjectGroup", "Roof")
 facade_group = doc.addObject("App::DocumentObjectGroup", "Facade")
+foundation_group = doc.addObject("App::DocumentObjectGroup", "Foundation")
 
 # 4 corners
 #######
@@ -340,8 +344,29 @@ make_facade('FacadeLeft', 'left', from_stud=stud_front_left, to_stud=stud_back_l
 make_facade('FacadeRight', 'right', from_stud=stud_front_right, to_stud=stud_back_right)
 make_facade('FacadeBack', 'back', from_stud=stud_back_left, to_stud=stud_back_right)
 
+all_studs = [stud_front_left, stud_front_right, stud_back_left, stud_back_right, stud_door_left, stud_door_right] + inner_studs_left + inner_studs_right + inner_studs_back
+for stud in all_studs:
+  cylinder = doc.addObject("Part::Cylinder", stud.Label + "Foundation")
+  cylinder.Height = foundation_height
+  cylinder.Radius = foundation_diameter / 2
+  new_x = left(stud) + (stud.Length.Value / 2)
+  new_y = front(stud) + (stud.Width.Value / 2)
+  new_z = bottom(stud) - foundation_height - foundation_gap
+  Draft.move(cylinder, FreeCAD.Vector(new_x, new_y, new_z))
+  foundation_group.addObject(cylinder)
 
 doc.recompute()
 
 FreeCADGui.ActiveDocument.ActiveView.viewIsometric()
 FreeCADGui.ActiveDocument.ActiveView.fitAll()
+
+def object_dimensions(obj):
+  dimensions = [dimension.Value for dimension in [obj.Length, obj.Width, obj.Height]]
+  dimensions.sort()
+  return 'x'.join(["{:.1f}".format(x) for x in dimensions])
+
+print("")
+print("Parts:")
+for group in [frame_group, roof_group, facade_group]:
+  for obj in group.OutListRecursive:
+    print(object_dimensions(obj))
