@@ -10,7 +10,7 @@ height_back = 2000
 door_width = 1500
 door_height = 2000
 beam_overlap = 15
-foundation_height = 300
+support_height = 300
 support_angle = 70
 stud_max_distance = 1000
 rafter_max_distance = 1000
@@ -19,6 +19,7 @@ batten_height = 30
 batten_thickness = 50
 facade_board_thickness = 19
 facade_board_width = 121-8
+door_extra_gap = beam_thickness / 2
 foundation_height = 750
 foundation_diameter = 153
 foundation_gap = 15
@@ -111,9 +112,9 @@ def makeInnerStuds(name, height, from_stud, to_stud, direction):
   return inner_studs
 
 def makeSupportBeam(name, at_stud, direction):
-  support_beam_size = (at_stud.Height.Value - foundation_height) / math.sin(math.radians(support_angle))
+  support_beam_size = (at_stud.Height.Value - support_height - beam_overlap) / math.sin(math.radians(support_angle))
   support_beam = makeStud('Support' + name, support_beam_size)
-  moveLeftFrontBottom(support_beam, left(at_stud), front(at_stud), bottom(at_stud) + foundation_height)
+  moveLeftFrontBottom(support_beam, left(at_stud), front(at_stud), bottom(at_stud) + support_height)
 
   if direction == 'left':
     angle = -90 + support_angle
@@ -208,10 +209,10 @@ moveLeftFrontBottom(stud_front_left, 0, 0, 0)
 stud_front_right = makeStud('StudFrontRight', height_front)
 moveLeftFrontBottom(stud_front_right, shed_width - beam_thickness, 0, 0)
 
-stud_back_left = makeStud('StudBackLeft', height_back)
+stud_back_left = makeStud('StudBackLeft', height_back - beam_overlap)
 moveLeftFrontBottom(stud_back_left, 0, shed_depth - beam_thickness, 0)
 
-stud_back_right = makeStud('StudBackRight', height_back)
+stud_back_right = makeStud('StudBackRight', height_back - beam_overlap)
 moveLeftFrontBottom(stud_back_right, shed_width - beam_thickness, shed_depth - beam_thickness, 0)
 
 frame_group.addObjects([stud_front_left, stud_front_right, stud_back_left, stud_back_right])
@@ -223,12 +224,12 @@ chord_front = makeCuboid('ChordFront', x=shed_width + (2 * roof_overhang), y=bea
 moveLeftFrontBottom(chord_front, left(stud_front_left) - roof_overhang, front(stud_front_left), top(stud_front_left) - beam_overlap)
 
 chord_back = makeCuboid('ChordBack', x=shed_width + (2 * roof_overhang), y=beam_thickness, z=beam_thickness)
-moveLeftFrontBottom(chord_back, left(stud_back_left) - roof_overhang, front(stud_back_left), top(stud_back_left) - beam_overlap)
+moveLeftFrontBottom(chord_back, left(stud_back_left) - roof_overhang, front(stud_back_left), top(stud_back_left))
 
-chord_left = makeCuboid('ChordLeft', x=beam_thickness, y=front(stud_back_left) - back(stud_front_left) + beam_overlap, z=beam_thickness)
+chord_left = makeCuboid('ChordLeft', x=beam_thickness, y=front(stud_back_left) - back(stud_front_left) + (2 * beam_overlap), z=beam_thickness)
 moveLeftFrontBottom(chord_left, left(stud_front_left), back(stud_front_left) - beam_overlap, bottom(chord_back))
 
-chord_right = makeCuboid('ChordRight', x=beam_thickness, y=front(stud_back_right) - back(stud_front_right) + beam_overlap, z=beam_thickness)
+chord_right = makeCuboid('ChordRight', x=beam_thickness, y=front(stud_back_right) - back(stud_front_right) + (2 * beam_overlap), z=beam_thickness)
 moveLeftFrontBottom(chord_right, left(stud_front_right), back(stud_front_right) - beam_overlap, bottom(chord_back))
 
 frame_group.addObjects([chord_front, chord_back, chord_left, chord_right])
@@ -289,15 +290,25 @@ Draft.rotate(roof_group.OutListRecursive, angle=roof_angle * -1, axis=FreeCAD.Ve
 # facade
 #####
 
-def make_facade(name, face, from_stud, to_stud, top=door_height, bottom=0, vertical_direction='down'):
+def make_facade(name, face, from_stud, to_stud, top=door_height + door_extra_gap, bottom=0, vertical_direction='down', door_gap_side=None):
   height = top - bottom
   last_board_width = height % facade_board_width
   rows = math.ceil(height / facade_board_width)
 
+  if door_gap_side:
+    door_gap = door_extra_gap
+  else:
+    door_gap = 0
+
+  if door_gap_side == 'left':
+    door_gap_pos_offset = door_gap
+  else:
+    door_gap_pos_offset = 0
+
   if face == 'front':
-    x = right(to_stud) - left(from_stud)
+    x = right(to_stud) - left(from_stud) - door_gap
     y = facade_board_thickness
-    pos_x = left(from_stud)
+    pos_x = left(from_stud) + door_gap_pos_offset 
     pos_y = front(from_stud) - facade_board_thickness
   elif face == 'back':
     x = right(to_stud) - left(from_stud)
@@ -307,7 +318,7 @@ def make_facade(name, face, from_stud, to_stud, top=door_height, bottom=0, verti
   elif face == 'left':
     x = facade_board_thickness
     y = back(to_stud) - front(from_stud)
-    pos_x = left(from_stud) - facade_board_thickness
+    pos_x = left(from_stud) - facade_board_thickness 
     pos_y = front(from_stud)
   elif face == 'right':
     x = facade_board_thickness
@@ -337,9 +348,9 @@ def make_facade(name, face, from_stud, to_stud, top=door_height, bottom=0, verti
     move(board, pos_x, pos_y, pos_z)
     facade_group.addObject(board)
 
-make_facade('FacadeFrontLeft', 'front', from_stud=stud_front_left, to_stud=stud_door_left)
-make_facade('FacadeFrontRight', 'front', from_stud=stud_door_right, to_stud=stud_front_right)
-make_facade('FacadeFrontAboveDoor', 'front', from_stud=stud_front_left, to_stud=stud_front_right, top=bottom(chord_front), bottom=door_height, vertical_direction='up')
+make_facade('FacadeFrontLeft', 'front', from_stud=stud_front_left, to_stud=stud_door_left, door_gap_side='right')
+make_facade('FacadeFrontRight', 'front', from_stud=stud_door_right, to_stud=stud_front_right, door_gap_side='left')
+make_facade('FacadeFrontAboveDoor', 'front', from_stud=stud_front_left, to_stud=stud_front_right, top=top(chord_front), bottom=door_height + door_extra_gap, vertical_direction='up')
 make_facade('FacadeLeft', 'left', from_stud=stud_front_left, to_stud=stud_back_left)
 make_facade('FacadeRight', 'right', from_stud=stud_front_right, to_stud=stud_back_right)
 make_facade('FacadeBack', 'back', from_stud=stud_back_left, to_stud=stud_back_right)
