@@ -1,6 +1,6 @@
 import FreeCAD, Draft, Arch, FreeCADGui, math
 
-shed_width = 3800
+shed_width = 3840
 shed_depth = 2500
 roof_overhang = 250
 beam_thickness = 80
