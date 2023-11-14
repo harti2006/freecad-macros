@@ -1,4 +1,4 @@
-import FreeCAD, Draft, Arch, FreeCADGui, math
+import FreeCAD, Draft, Arch, FreeCADGui, math, Part
 
 shed_width = 3840
 shed_depth = 2500
@@ -23,6 +23,9 @@ door_extra_gap = beam_thickness / 2
 foundation_height = 750
 foundation_diameter = 153
 foundation_gap = 15
+anchor_thickness = 5
+anchor_width = 60
+anchor_height = 600
 document_name = 'GardenShed'
 
 def init_doc():
@@ -366,6 +369,35 @@ for stud in all_studs:
   Draft.move(cylinder, FreeCAD.Vector(new_x, new_y, new_z))
   foundation_group.addObject(cylinder)
 
+def make_anchor(stud, rotation=0):
+  side_a = makeCuboid(stud.Label + 'AnchorSideA', anchor_thickness, anchor_width, anchor_height)
+  side_b = makeCuboid(stud.Label + 'AnchorSideB', anchor_thickness, anchor_width, anchor_height)
+  x_a = left(stud) - anchor_thickness
+  x_b = right(stud)
+  y = front(stud) +  ((beam_thickness - anchor_width) / 2)
+  z = bottom(stud) - (anchor_height / 2)
+  moveLeftFrontBottom(side_a, x_a, y, z)
+  moveLeftFrontBottom(side_b, x_b, y, z)
+
+  anchor = doc.addObject("Part::Compound", stud.Label + 'Anchor')
+  anchor.Links = [side_a, side_b]
+
+  stud_center_x = left(stud) + ((right(stud) - left(stud)) / 2)
+  stud_center_y = front(stud) + ((back(stud) - front(stud)) / 2)
+
+  Draft.rotate(anchor, angle=rotation, axis=FreeCAD.Vector(0, 0, 1), center=FreeCAD.Vector(stud_center_x, stud_center_y, 0))
+  foundation_group.addObject(anchor)
+
+  return anchor
+  
+
+for stud in [stud_front_left, stud_front_right, stud_back_left, stud_back_right, stud_door_left, stud_door_right] + inner_studs_back:
+  make_anchor(stud)
+
+for stud in inner_studs_left + inner_studs_right:
+  make_anchor(stud, rotation=90)
+
+
 doc.recompute()
 
 FreeCADGui.ActiveDocument.ActiveView.viewIsometric()
@@ -381,3 +413,4 @@ print("Parts:")
 for group in [frame_group, roof_group, facade_group]:
   for obj in group.OutListRecursive:
     print(object_dimensions(obj))
+    pass
